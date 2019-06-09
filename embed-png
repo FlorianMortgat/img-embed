@@ -1,0 +1,79 @@
+#!/usr/bin/python2
+# -*- coding: utf-8 -*-
+"""
+© 2017 Florian Mortgat
+
+This program turns a HTML file with external (local) PNG images into a
+self-contained HTML file in which images are not linked, but embedded as a data
+URL.
+
+The resulting file is much larger than the sum of the original HTML + PNG files,
+but it is easier to share it (with people who don’t know how to decompress a zip
+archive for instance).
+
+This script is not intended to work with any kind of file (all it does is a
+search & replace – it does NOT parse HTML).
+
+————
+
+Ce programme transforme un HTML comportant des images PNG externes (locales) en
+HTML autosuffisant (où les images ne sont plus liées, mais embarquées en tant
+que données dans l’URL source).
+
+Le fichier résultant est beaucoup plus volumineux que la somme du fichier
+original et des images, mais il peut être envoyé par e-mail ou sur une
+plate-forme de partage de fichiers sans avoir à envoyer une myriade d’images
+avec et sans que votre correspondant ait besoin de savoir dézipper une archive.
+
+Ce script n’a pas pour vocation de fonctionner sur n’importe quel type de
+fichier (il se contente de faire un remplacement automatique et n’effectue
+aucune analyse structurée du HTML).
+
+Usage:
+	embed-png my_html_file.html
+Output:
+	my_html_file-images.html (larger, self-contained file)
+"""
+import os, sys
+import re
+import base64
+
+myname = sys.argv[0]
+os.chdir(sys.path[0])
+
+def file2dataURL (filename):
+	if not os.path.isfile (filename):
+		return ''
+	srcbase='data:image/png;base64,'
+	data = srcbase + base64.encodestring (open (filename, 'r').read()).replace ('\n','')
+	print "Embedding '%s': %.02fkB"%(filename, len(data)/1024.)
+	return data
+
+def main ():
+	''
+	RE_IM='(?i)src=["\'](.*?\\.png)["\']'
+	replace_reim = lambda m: 'src="%s" title="%s"'%(file2dataURL(m.group(1)), m.group(1))
+
+	try:srcfile = sys.argv[1]
+	except:
+		print "USAGE: %s HTMLFILE\n"%myname
+		print "   Creates a new html file (by appending '-images' to the base name"
+		print "   of HTMLFILE). In the new file, all external PNG images linked in"
+		print "   HTMLFILE will be embedded as data.\n"
+		print "EXAMPLE: %s tutorial.html"%myname
+		print "   will create 'tutorial-images.html', which will have all PNGs of"
+		print "   tutorial.html as embedded data." 
+		return
+	assert srcfile.endswith ('.html') or srcfile.endswith('.htm')
+	destfile = srcfile.replace ('.html', '-images.html')
+	print "Embedding all png images from '%s' into '%s'"%(srcfile, destfile)
+
+	assert os.path.isfile (srcfile)
+	destcontent = re.sub (RE_IM, replace_reim, open (srcfile, 'r').read())
+	print 'Size of destination file: %.02fMB.'%(float(len (destcontent)) / 1024**2)
+	open (destfile, 'w').write (destcontent)
+
+
+if __name__ == "__main__":
+	try: main ()
+	except KeyboardInterrupt: print ("\033[31mLeaving: User typed Ctrl+C.\033[0m")
